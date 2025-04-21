@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+alice
+bob
+*.swp

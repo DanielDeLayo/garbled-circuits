@@ -1,3 +1,5 @@
+#include <iostream>
+#include <cassert>
 #include "shared_info.hpp"
 
 
@@ -16,35 +18,40 @@ void bob_ot2()
 }
 
 // Handles all of Bob's actions given Bob's secret bits
-void bob()
+void bob(int num)
 {
 
   // Await Alice's circuit
-  await_circuit();
+  //await_circuit();
 
   // Generate the public keys and private key (encoding bob's bits)
-  bob_ot1();
+  //bob_ot1();
   
   //Send public keys to Alice
-  send_keys();
+  //send_keys();
 
   // Wait for Alice's encrypted messages (passwords for circuit input)
-  await_messages();
+  //await_messages();
 
   // Decrypt one of Alice's passwords
-  bob_ot2();
+  //bob_ot2();
 
   // Evaluate Alice's circuit on the password determined by bob's bits
-  evaluate();
+  //evaluate();
 }
 
 
 
-int main()
+int main(int argc, char** argv)
 {
+  // Make the fifos
+  make_fifos();
 
-  //TODO: Take bits as input
+  assert(argc == 2 && "Usage: ./bob <number>");
+  int num = atoi(argv[1]);
+  std::cout << "Bob's Input: " << num << std::endl;
+  assert(num >= 0 && num < (1 << n_bits) && "Error: Invalid number");   
 
-
-  bob();
+  // int represents the bits :)
+  bob(num);
 }

@@ -1,3 +1,5 @@
+#include <iostream>
+#include <cassert>
 #include "shared_info.hpp"
 
 
@@ -9,32 +11,38 @@ void alice_ot1()
 }
 
 // Handles all of Alice's actions given Alice's secret bits
-void alice()
+void alice(int num)
 {
   // Alice garbles a circuit 
   // It contains her secret information
-  auto circuit = garble();
+  //auto circuit = garble();
 
   // Write down the garbled circuit for Bob
-  send_circuit();
+  //send_circuit();
 
   // Wait for Bob to send n public keys
-  await_keys()
+  //await_keys()
   
   // Generate encrypted messages
-  alice_ot1();
+  //alice_ot1();
 
   // Send them to bob
-  send_messages();
+  //send_messages();
 
   // That's it!
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
+  // Make the fifos
+  make_fifos();
+  
+  assert(argc == 2 && "Usage: ./alice <number>");
+  int num = atoi(argv[1]);
+  std::cout << "Alice's Input: " << num << std::endl;
+  assert(num >= 0 && num < (1 << n_bits) && "Error: Invalid number");
 
-  //TODO: Take bits as input
-
-  alice();
+  // What better way to pass around bits than an integer?
+  alice(num);
 }
