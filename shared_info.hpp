@@ -54,6 +54,18 @@ class gate
   }
 };
 
+//TODO: Let's simplify the problem.
+// Comparison is much easier with different gates
+// New gate idea: 4 input wires, 2 output wires 
+// 2 inputs for the 2 bits, 2 inputs for comparison carrythrough
+// 2 outputs for the comparison
+// No reason to break it into AND or OR gates
+// This gives us a simple to understand linear depth circuit
+
 template <unsigned int n_bits>
 class circuit
+{
+
+}
+
 
