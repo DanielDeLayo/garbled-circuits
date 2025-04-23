@@ -3,40 +3,54 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <openssl/aes.h>
-#include <openssl/sha.h>
-
 #include <cstring>
+#include <fstream>
+
+#include "libcpp-crypto.hpp"
+using namespace lklibs;
+
 
 constexpr int n_bits = 2;
+constexpr size_t RSA_BUFF = 4096;
 
-// Difference between bob's public keys
-constexpr int r = 1;
 
-std::string from_alice_pipe_name = "from-alice.pipe";
-std::string from_bob_pipe_name = "from-bob.pipe";
-std::string alice_garbled_circuit = "from-alice-garbled-circuit.pipe";
+const char* from_alice_pipe_name = "from-alice.pipe";
+const char* from_bob_pipe_name = "from-bob.pipe";
+const char* alice_garbled_circuit = "from-alice-garbled-circuit.pipe";
 
 
 void make_fifos()
 {
-  mkfifo(from_alice_pipe_name.c_str(), 0666);
-  mkfifo(from_bob_pipe_name.c_str(), 0666);
-  mkfifo(alice_garbled_circuit.c_str(), 0666);
+  mkfifo(from_alice_pipe_name, 0666);
+  mkfifo(from_bob_pipe_name, 0666);
+  mkfifo(alice_garbled_circuit, 0666);
 }
 
 
 constexpr int KEY_SIZE = 128;
 
-class gate
+
+/*
+ * This gate is a simple comparison gate with carry-through.
+ * That is, 4 input wires and 2 output wires. 
+ * 2 input wires are override wires, representing a higher comparison.
+ * 1 input wire is Bob's bit, and the other is Alice's bit.
+ * The 2 output wires are the override wires for the next circuit
+ * 00 encodes equality, 01 encodes greater than, and 10 encodes less than.
+ * 
+ * This gate also, notably, already encodes Alice's informaton.
+ * There are therefore 6 valid inputs and 6 possible outputs. That is, the three carrybit states x two bob states.
+*/
+struct gate
 {
-  char valid_inputs[4][SHA256_DIGEST_LENGTH]; 
-  char output_passwords[4][KEY_SIZE/2];
+  char valid_inputs[6][SHA256_DIGEST_LENGTH]; 
+  char output_passwords[6][KEY_SIZE/2];
 
   //TODO: encryption and hashing
   char* evaluate(char* pass1, char* pass2)
   {
-    int index = (atoi(pass1) << 1) + atoi(pass2);
+    int index = (atoi(pass1) << 2) + atoi(pass2);
+    std::cout << index << std::endl;
     return output_passwords[index];
   }
 
@@ -65,7 +79,7 @@ class gate
 template <unsigned int n_bits>
 class circuit
 {
-
-}
+  
+};
 
 

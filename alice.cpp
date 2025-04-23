@@ -3,11 +3,17 @@
 #include "shared_info.hpp"
 
 
-// Returns n encrypted messages, n-1 of which are garbage
-// Given n public keys, n-1 of which are garbage, and Alice's n secret messages
+// Returns 2 encrypted messages, 1 of which is garbage
+// Given 2 public keys, 1 of which 1 garbage, and Alice's secret bit
 void alice_ot1()
 {
 
+}
+
+void await_keys(char* p1, char* p2, char* pk)
+{
+  std::ifstream fifo(from_bob_pipe_name);
+  fifo >> p1 >> p2 >> pk;
 }
 
 // Handles all of Alice's actions given Alice's secret bits
@@ -20,16 +26,23 @@ void alice(int num)
   // Write down the garbled circuit for Bob
   //send_circuit();
 
-  // Wait for Bob to send n public keys
-  //await_keys()
-  
-  // Generate encrypted messages
-  //alice_ot1();
+  // Allocate space for the three keys
+  char p1 [RSA_BUFF];
+  char p2 [RSA_BUFF];
+  char pk [RSA_BUFF];
 
-  // Send them to bob
+  for (int i = 0; i < n_bits; i++)
+  {
+
+    // Wait for Bob to send n public keys
+    await_keys(p1, p2, pk);
+
+      // Generate encrypted messages
+      //alice_ot1();
+
+      // Send them to bob
   //send_messages();
-
-  // That's it!
+  }
 }
 
 
