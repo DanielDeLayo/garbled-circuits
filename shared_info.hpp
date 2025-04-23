@@ -11,8 +11,9 @@ using namespace lklibs;
 
 
 constexpr int n_bits = 2;
-constexpr size_t RSA_BUFF = 4096;
+constexpr size_t RSA_BUFF = 5000;
 
+constexpr int magic_byte = 417;
 
 const char* from_alice_pipe_name = "from-alice.pipe";
 const char* from_bob_pipe_name = "from-bob.pipe";
