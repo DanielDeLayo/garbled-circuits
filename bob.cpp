@@ -33,13 +33,11 @@ void bob_ot1(bool bit, char* p1, char* p2, char* pk)
 }
 
 // Returns one of alice's secret messages
-// Given bob's secret bits, bob's private key, and n of Alice's encrypted messages
-void bob_ot2(bool bit, char* pk, char msgs[2][KEY_SIZE], char out[KEY_SIZE])
+// Given bob's secret bits, bob's private key, and 2 of Alice's encrypted messages
+void bob_ot2(bool bit, char* pk, char msgs[2][MSG_SIZE], char out[MSG_SIZE])
 {
-    std::cout << msgs[0] << std::endl;
-    std::cout << msgs[1] << std::endl;
     auto decryptedText = CryptoService::decryptWithRSA(msgs[(int) bit], pk);
-    std::cout << decryptedText << std::endl;
+    std::cout << "BOB GOT: " << decryptedText << std::endl;
 }
 
 void send_keys(char* p1, char* p2)
@@ -49,11 +47,11 @@ void send_keys(char* p1, char* p2)
   fifo.write(p2, RSA_BUFF);
 }
 
-void await_messages(char msgs[2][KEY_SIZE])
+void await_messages(char msgs[2][MSG_SIZE])
 {
   std::ifstream fifo(from_alice_pipe_name);
-  fifo.read(msgs[0], KEY_SIZE);
-  fifo.read(msgs[1], KEY_SIZE);
+  fifo.read(msgs[0], MSG_SIZE);
+  fifo.read(msgs[1], MSG_SIZE);
 }
 
 
@@ -71,11 +69,14 @@ void bob(int num)
   char p2 [RSA_BUFF];
   char pk [RSA_BUFF];
   
-  char msgs [2][KEY_SIZE];
-  char secret[n_bits][KEY_SIZE];
+  char msgs [2][MSG_SIZE];
+  char secret[n_bits][PASS_SIZE];
   for (int i = 0; i < n_bits; i++)
   {
-    bob_ot1(true, p1, p2, pk);
+    // Extract the ith bit from bob's number
+    bool bit = num & (1 << i);
+
+    bob_ot1(bit, p1, p2, pk);
   
     //Send public keys to Alice
     send_keys(p1, p2);
@@ -84,14 +85,12 @@ void bob(int num)
     await_messages(msgs);
 
     // Decrypt one of Alice's passwords
-    bob_ot2(true, pk, msgs, secret[i]);
+    bob_ot2(bit, pk, msgs, secret[i]);
   }
 
   // Evaluate Alice's circuit on the password determined by bob's bits
   //evaluate();
 }
-
-
 
 int main(int argc, char** argv)
 {

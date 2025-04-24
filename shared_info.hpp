@@ -11,8 +11,9 @@ using namespace lklibs;
 
 
 constexpr int n_bits = 2;
+// Storing RSA keys
 constexpr size_t RSA_BUFF = 5000;
-
+// Byte to change in public key
 constexpr int magic_byte = 417;
 
 const char* from_alice_pipe_name = "from-alice.pipe";
@@ -27,8 +28,10 @@ void make_fifos()
   mkfifo(alice_garbled_circuit, 0666);
 }
 
-
-constexpr int KEY_SIZE = 128;
+// Encrypted message size
+constexpr int MSG_SIZE = 512;
+// AES message size
+constexpr int PASS_SIZE = 128;
 
 
 /*
@@ -45,7 +48,7 @@ constexpr int KEY_SIZE = 128;
 struct gate
 {
   char valid_inputs[6][SHA256_DIGEST_LENGTH]; 
-  char output_passwords[6][KEY_SIZE/2];
+  char output_passwords[6][PASS_SIZE/2];
 
   //TODO: encryption and hashing
   char* evaluate(char* pass1, char* pass2)

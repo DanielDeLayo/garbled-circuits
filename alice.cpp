@@ -6,19 +6,17 @@
 
 // Returns 2 encrypted messages, 1 of which is garbage
 // Given 2 public keys, 1 of which 1 garbage, and Alice's secret bit
-void alice_ot1(char msgs[2][KEY_SIZE], char keys[2][RSA_BUFF], char enc_msgs[2][KEY_SIZE])
+void alice_ot1(char msgs[2][MSG_SIZE], char keys[2][RSA_BUFF], char enc_msgs[2][MSG_SIZE])
 {
   assert(keys[0][magic_byte]+1 == keys[1][magic_byte] && "Alice received bad keys!");
 
   auto encryptedText = CryptoService::encryptWithRSA(msgs[0], keys[0]);
   auto encryptedText2 = CryptoService::encryptWithRSA(msgs[1], keys[1]);
 
-  size_t len = encryptedText.copy(enc_msgs[0], KEY_SIZE);
+  size_t len = encryptedText.copy(enc_msgs[0], MSG_SIZE);
   enc_msgs[0][len] = 0;
-  len = encryptedText2.copy(enc_msgs[1], KEY_SIZE);
+  len = encryptedText2.copy(enc_msgs[1], MSG_SIZE);
   enc_msgs[1][len] = 0;
-  std::cout << enc_msgs[0] << std::endl;
-  std::cout << enc_msgs[1] << std::endl;
 }
 
 void await_keys(char* p1, char* p2)
@@ -29,11 +27,11 @@ void await_keys(char* p1, char* p2)
   //std::cout << p1 << p2 << std::endl;
 }
 
-void send_messages(char msgs[2][KEY_SIZE])
+void send_messages(char msgs[2][MSG_SIZE])
 {
   std::ofstream fifo(from_alice_pipe_name);
-  fifo.write(msgs[0], KEY_SIZE);
-  fifo.write(msgs[1], KEY_SIZE);
+  fifo.write(msgs[0], MSG_SIZE);
+  fifo.write(msgs[1], MSG_SIZE);
   //std::cout << p1 << p2 << std::endl;
 }
 
@@ -55,15 +53,15 @@ void alice(int num)
   // Allocate space for the public keys
   char keys [2][RSA_BUFF];
   // plaintext messages
-  char msgs [2][KEY_SIZE];
+  char msgs [2][MSG_SIZE];
   // encrypted messages
-  char enc_msgs [2][KEY_SIZE];
+  char enc_msgs [2][MSG_SIZE];
 
   std::string m0 = "0"; 
   std::string m1 = "1"; 
 
-  m0.copy(msgs[0], KEY_SIZE);
-  m1.copy(msgs[1], KEY_SIZE);
+  m0.copy(msgs[0], MSG_SIZE);
+  m1.copy(msgs[1], MSG_SIZE);
 
   for (int i = 0; i < n_bits; i++)
   {
@@ -72,6 +70,7 @@ void alice(int num)
     await_keys(keys[0], keys[1]);
 
     // Generate encrypted messages
+    // TODO: Send passwords instead of 0 and 1
     alice_ot1(msgs, keys, enc_msgs);
 
     // Send them to bob
