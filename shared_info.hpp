@@ -58,17 +58,11 @@ struct gate
     return output_passwords[index];
   }
 
-
-  gate(int output[4])
+  gate(bool alice)
   {
-    //TODO: This for real
-    for (int i = 0; i < 4; i++)
-    {
-      if (output[i])
-        strcpy(output_passwords[i], "1");
-      else
-        strcpy(output_passwords[i], "0");
-    } 
+    // TODO: higher order bits will be the carrythrough, since 11 can never occur.
+    // the lower order bit will be alice
+    
   }
 };
 
