@@ -31,8 +31,8 @@ void make_fifos()
 
 // Encrypted message size
 constexpr int MSG_SIZE = 512;
-// AES message size
-constexpr int PASS_SIZE = 128;
+// AES key half-size
+constexpr int PASS_SIZE = 16;
 
 auto gt = "01";
 auto lt = "10";
@@ -51,22 +51,29 @@ auto eq = "00";
 */
 struct gate
 {
-  char valid_inputs[6][SHA256_DIGEST_LENGTH+1]; 
-  char output_passwords[6][PASS_SIZE/2];
+  char valid_inputs[6][SHA256_DIGEST_LENGTH]; 
+  char output_passwords[6][MSG_SIZE];
 
   char* evaluate(const char* pass)
   {
-    for (int i = 0; i < 6; i++)
-      if (strcmp(valid_inputs[i], pass) == 0) 
+    //std::cout << "TRYING: " << pass << std::endl;
+    for (int i = 0; i < 6; i++){
+      //std::cout << "ON: " << valid_inputs[i] << std::endl;
+      if (strncmp(valid_inputs[i], pass, SHA256_DIGEST_LENGTH) == 0) 
         return output_passwords[i];
+    }
     assert(false && "No valid input!");
     return nullptr;
   }
- 
+
   gate() {}
  
-  gate(bool alice, bool last, char bob_inps[2][PASS_SIZE/2], char in_pass[3][PASS_SIZE/2], char out_pass[3][PASS_SIZE/2])
+  gate(bool alice, bool last, const char bob_inps[2][PASS_SIZE], const char in_pass[3][PASS_SIZE], const char out_pass[3][PASS_SIZE])
   {
+
+    // FIXME: To properly garble the gate, we'd have to permute the gate s.t. the position isn't dependent on the input anymore
+    // BUT... that's out of scope! :)  
+
     // We need alice's bit for the logic
     // Whether or not it's the last computation for the plaintext override
     // Bob's possible passwords
@@ -77,12 +84,17 @@ struct gate
     // the lower order bit will be alice
     
     // Gross, but fine    
-    strcpy(valid_inputs[0], CryptoService::hash(std::string(in_pass[0]) + std::string(bob_inps[0])).c_str());
-    strcpy(valid_inputs[1], CryptoService::hash(std::string(in_pass[0]) + std::string(bob_inps[1])).c_str());
-    strcpy(valid_inputs[2], CryptoService::hash(std::string(in_pass[1]) + std::string(bob_inps[0])).c_str());
-    strcpy(valid_inputs[3], CryptoService::hash(std::string(in_pass[1]) + std::string(bob_inps[1])).c_str());
-    strcpy(valid_inputs[4], CryptoService::hash(std::string(in_pass[2]) + std::string(bob_inps[0])).c_str());
-    strcpy(valid_inputs[5], CryptoService::hash(std::string(in_pass[2]) + std::string(bob_inps[1])).c_str());
+
+    std::string concats[6];
+    concats[0] = std::string(in_pass[0], PASS_SIZE) + std::string(bob_inps[0], PASS_SIZE);  
+    concats[1] = std::string(in_pass[0], PASS_SIZE) + std::string(bob_inps[1], PASS_SIZE);
+    concats[2] = std::string(in_pass[1], PASS_SIZE) + std::string(bob_inps[0], PASS_SIZE);
+    concats[3] = std::string(in_pass[1], PASS_SIZE) + std::string(bob_inps[1], PASS_SIZE);
+    concats[4] = std::string(in_pass[2], PASS_SIZE) + std::string(bob_inps[0], PASS_SIZE);
+    concats[5] = std::string(in_pass[2], PASS_SIZE) + std::string(bob_inps[1], PASS_SIZE);
+  
+    for (int  i = 0; i < 6; i++)
+      strncpy(valid_inputs[i], CryptoService::hash(concats[i]).c_str(), SHA256_DIGEST_LENGTH);
 
     /*
     strcpy(valid_inputs[0], "000");
@@ -94,19 +106,36 @@ struct gate
     */
 
     // Helped vars for equal, greater than, less than
-    char* peq = out_pass[0];  
-    char* pgt = out_pass[1];
-    char* plt = out_pass[2];
+    std::string peq = std::string(out_pass[0], PASS_SIZE);  
+    std::string pgt = std::string(out_pass[1], PASS_SIZE);  
+    std::string plt = std::string(out_pass[2], PASS_SIZE);  
+    // Handle final plaintext case
+    if (last)
+    {
+      //std::cout << "LAST!" << std::endl;
+      peq = std::string(eq);
+      plt = std::string(lt);
+      pgt = std::string(gt);
+    }
     
     // Checking against alice's bit
-    strcpy(output_passwords[0], alice? pgt : peq);
-    strcpy(output_passwords[1], alice? peq : plt);
-    // carry
-    strcpy(output_passwords[2], pgt);
-    strcpy(output_passwords[3], pgt);
-    strcpy(output_passwords[4], plt);
-    strcpy(output_passwords[5], plt);
 
+    CryptoService::encryptWithAES(alice? pgt : peq, concats[0]).copy(output_passwords[0], MSG_SIZE);
+    CryptoService::encryptWithAES(alice? peq : plt, concats[1]).copy(output_passwords[1], MSG_SIZE);
+    CryptoService::encryptWithAES(pgt, concats[2]).copy(output_passwords[2], MSG_SIZE);
+    CryptoService::encryptWithAES(pgt, concats[3]).copy(output_passwords[3], MSG_SIZE);
+    CryptoService::encryptWithAES(plt, concats[4]).copy(output_passwords[4], MSG_SIZE);
+    CryptoService::encryptWithAES(plt, concats[5]).copy(output_passwords[5], MSG_SIZE);
+
+/*
+    strncpy(output_passwords[0], alice? pgt : peq, MSG_SIZE);
+    strncpy(output_passwords[1], alice? peq : plt, MSG_SIZE);
+    // carry
+    strncpy(output_passwords[2], pgt, MSG_SIZE);
+    strncpy(output_passwords[3], pgt, MSG_SIZE);
+    strncpy(output_passwords[4], plt, MSG_SIZE);
+    strncpy(output_passwords[5], plt, MSG_SIZE);
+*/
     /*
     // Checking against alice's bit
     strcpy(output_passwords[0], alice? gt : eq);
@@ -136,7 +165,7 @@ class circuit
 public:
   circuit() {}
 
-  circuit(int alice, char msgs [n_bits][2][PASS_SIZE/2], char passes[n_bits][3][PASS_SIZE/2]) {
+  circuit(int alice, char msgs [n_bits][2][PASS_SIZE], char passes[n_bits+1][3][PASS_SIZE]) {
     for (int i = 0; i < n_bits; i++)
     {
       // gate 0 becomes highest order bit
@@ -148,19 +177,29 @@ public:
   // highest order bit is index 0
   bool evaluate(const char input[n_bits][PASS_SIZE]) {
       // Evaluate with just the password
-      std::string str(input[0]);
+      // Workaround for empty left password
+      char workaround[PASS_SIZE];
+      memset(workaround, 0, PASS_SIZE);
+      std::string str(workaround, PASS_SIZE);
+      str += std::string(input[0], PASS_SIZE);
+      //std::cout << "INPUT: " << str << std::endl;
       char* unlocked_password = gates[0].evaluate(CryptoService::hash(str).c_str());
+      auto decrypted_password = CryptoService::decryptWithAES(unlocked_password, str);
+      //std::cout << "LEN : " << str.length() << std::endl;
       //std::cout << "UNLOCKED: " << unlocked_password << std::endl;
   
       // Evaluate with previous
       for (int i = 1; i < n_bits; i++)
       {
-          str = std::string(unlocked_password) + std::string(input[i]);
+          str = decrypted_password + std::string(input[i], PASS_SIZE);
+          //std::cout << "LEN : " << str.length() << std::endl;
           unlocked_password = gates[i].evaluate(CryptoService::hash(str).c_str());
-          std::cout << "UNLOCKED: " << unlocked_password << "!" <<  std::endl;
+          decrypted_password = CryptoService::decryptWithAES(unlocked_password, str);
+          //std::cout << "UNLOCKED: " << unlocked_password << "!" <<  std::endl;
       }
       // Evaluate output
-      return strcmp(unlocked_password, lt) != 0;
+      //std::cout << "ANS: " << decrypted_password << std::endl;
+      return strcmp(decrypted_password.c_str(), lt) != 0;
   }
 
   void send(std::ofstream& fifo)
@@ -170,7 +209,7 @@ public:
       for (int j = 0; j < 6; j++)
       {
         fifo.write(gates[i].valid_inputs[j], SHA256_DIGEST_LENGTH);
-        fifo.write(gates[i].output_passwords[j], PASS_SIZE/2);
+        fifo.write(gates[i].output_passwords[j], MSG_SIZE);
       }
     }
   }
@@ -182,7 +221,7 @@ public:
       for (int j = 0; j < 6; j++)
       {
         fifo.read(gates[i].valid_inputs[j], SHA256_DIGEST_LENGTH);
-        fifo.read(gates[i].output_passwords[j], PASS_SIZE/2);
+        fifo.read(gates[i].output_passwords[j], MSG_SIZE);
       }
     }
   }

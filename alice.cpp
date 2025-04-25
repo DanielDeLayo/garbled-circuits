@@ -6,12 +6,12 @@
 
 // Returns 2 encrypted messages, 1 of which is garbage
 // Given 2 public keys, 1 of which 1 garbage, and Alice's secret bit
-void alice_ot1(char msgs[2][PASS_SIZE/2], char keys[2][RSA_BUFF], char enc_msgs[2][MSG_SIZE])
+void alice_ot1(char msgs[2][PASS_SIZE], char keys[2][RSA_BUFF], char enc_msgs[2][MSG_SIZE])
 {
   assert(keys[0][magic_byte]+1 == keys[1][magic_byte] && "Alice received bad keys!");
 
-  auto encryptedText = CryptoService::encryptWithRSA(msgs[0], keys[0]);
-  auto encryptedText2 = CryptoService::encryptWithRSA(msgs[1], keys[1]);
+  auto encryptedText = CryptoService::encryptWithRSA(std::string(msgs[0], PASS_SIZE), keys[0]);
+  auto encryptedText2 = CryptoService::encryptWithRSA(std::string(msgs[1], PASS_SIZE), keys[1]);
 
   size_t len = encryptedText.copy(enc_msgs[0], MSG_SIZE);
   enc_msgs[0][len] = 0;
@@ -36,18 +36,19 @@ void send_messages(char msgs[2][MSG_SIZE])
 }
 
 template <unsigned int n_bits>
-circuit<n_bits> garble(int num, char msgs [n_bits][2][PASS_SIZE/2])
+circuit<n_bits> garble(int num, char msgs [n_bits][2][PASS_SIZE])
 {
-  char passes[n_bits][3][PASS_SIZE/2];
+  char passes[n_bits+1][3][PASS_SIZE];
+  for (int i = 0; i < 3; i++)
+    memset(passes[0][i], 0, PASS_SIZE); //Set to null strings for no other input wires
   // Start at 1: There is no carry password there
-  for (int i = 1; i < n_bits; i++)
+  for (int i = 1; i < n_bits+1; i++)
   {
     for (int j = 0; j < 3; j++)
     {
       // seems good enough as a password
       auto pass = CryptoService::hash(std::to_string(i) + std::string("werhgiusedrgsgrsdrgeriugh") + std::to_string(j));
-      pass.copy(passes[i][j], PASS_SIZE/2);
-      passes[i][j][PASS_SIZE/2-1] = 0;
+      pass.copy(passes[i][j], PASS_SIZE);
     }
   } 
   
@@ -67,14 +68,14 @@ void send_circuit(circuit<n_bits> msg)
 void alice(int num)
 {
   // plaintext secrets
-  char msgs [n_bits][2][PASS_SIZE/2];
+  char msgs [n_bits][2][PASS_SIZE];
   for (int i = 0; i < n_bits; i++)
   {
-    //TODO: passwordify
-    std::string m0 = "0";
-    std::string m1 = "1";
-    m0.copy(msgs[i][0], PASS_SIZE/2);
-    m1.copy(msgs[i][1], PASS_SIZE/2);
+    // Passwords :)
+    auto m0 = CryptoService::hash(std::to_string(i) + std::string("qlkw4tlikwq3ej4tjpqoawkjioe"));
+    auto m1 = CryptoService::hash(std::to_string(i) + std::string("ieawuhgiusehguiserwhgiusegu"));
+    m0.copy(msgs[i][0], PASS_SIZE);
+    m1.copy(msgs[i][1], PASS_SIZE);
   }
   
   // Alice garbles a circuit 

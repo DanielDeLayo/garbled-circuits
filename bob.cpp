@@ -40,7 +40,7 @@ void bob_ot2(bool bit, char* pk, char msgs[2][MSG_SIZE], char out[MSG_SIZE])
 {
     auto decryptedText = CryptoService::decryptWithRSA(msgs[(int) bit], pk);
     //std::cout << "BOB GOT: " << decryptedText << std::endl;
-    out[decryptedText.copy(out, MSG_SIZE)] = 0;;
+    decryptedText.copy(out, MSG_SIZE);
 }
 
 void send_keys(char* p1, char* p2)

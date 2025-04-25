@@ -1,5 +1,5 @@
 CXX = g++
-CPPFLAGS = -g -O3 -std=c++17
+CPPFLAGS = -g -O3 -std=c++17 -fsanitize=address
 LDFLAGS = -lssl -lcrypto
 
 .PHONY: all clean
