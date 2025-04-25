@@ -11,7 +11,7 @@
 using namespace lklibs;
 
 
-constexpr int n_bits = 10;
+constexpr int n_bits = 5;
 // Storing RSA keys
 constexpr size_t RSA_BUFF = 5000;
 // Byte to change in public key
