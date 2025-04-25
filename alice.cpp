@@ -75,7 +75,6 @@ void alice(int num)
 
   for (int i = 0; i < n_bits; i++)
   {
-
     // Wait for Bob to send n public keys
     await_keys(keys[0], keys[1]);
 

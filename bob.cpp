@@ -22,6 +22,8 @@ void bob_ot1(bool bit, char* p1, char* p2, char* pk)
 
   // At this point, we both p1 and p2 are valid keys. We should break one of them
   // magic number of the last byte in the exponent field
+
+  //FIXME: This can corrupt the public key without proper wrap around. 
   if (bit) // break the 0 bit key
     p1[magic_byte]--;
   else    // break the 1 bit key
@@ -37,7 +39,8 @@ void bob_ot1(bool bit, char* p1, char* p2, char* pk)
 void bob_ot2(bool bit, char* pk, char msgs[2][MSG_SIZE], char out[MSG_SIZE])
 {
     auto decryptedText = CryptoService::decryptWithRSA(msgs[(int) bit], pk);
-    std::cout << "BOB GOT: " << decryptedText << std::endl;
+    //std::cout << "BOB GOT: " << decryptedText << std::endl;
+    out[decryptedText.copy(out, MSG_SIZE)] = 0;;
 }
 
 void send_keys(char* p1, char* p2)
@@ -81,8 +84,8 @@ void bob(int num)
   char secret[n_bits][PASS_SIZE];
   for (int i = 0; i < n_bits; i++)
   {
-    // Extract the ith bit from bob's number
-    bool bit = num & (1 << i);
+    // Extract the ith bit from bob's number (starting at MSB)
+    bool bit = num & (1 << (n_bits-1 -i));
 
     bob_ot1(bit, p1, p2, pk);
   

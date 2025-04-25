@@ -55,9 +55,11 @@ struct gate
   char output_passwords[6][PASS_SIZE/2];
 
   //TODO: encryption and hashing
-  char* evaluate(char* pass)
+  char* evaluate(const char* pass)
   {
-    int index = atoi(pass);
+    std::cout << "PASS: " << pass << "!" << std::endl;
+    int index = atoi(pass, 2);
+    //std::cout << "INDEX: " << index << std::endl;
     return output_passwords[index];
   }
  
@@ -111,13 +113,19 @@ public:
   }
 
   // highest order bit is index 0
-  bool evaluate(char input[n_bits][PASS_SIZE]) {
+  bool evaluate(const char input[n_bits][PASS_SIZE]) {
       char* unlocked_password = gates[0].evaluate(input[0]);
+      std::string str(unlocked_password);
+      //std::cout << "UNLOCKED: " << unlocked_password << std::endl;
+  
       for (int i = 1; i < n_bits; i++)
       {
-          unlocked_password = gates[i].evaluate(unlocked_password);
+          str = str + std::string(input[i]);
+          unlocked_password = gates[i].evaluate(str.c_str());
+          std::cout << "UNLOCKED: " << unlocked_password << "!" <<  std::endl;
+          str = std::string(unlocked_password);
       }
-      return unlocked_password == eq || unlocked_password == gt;
+      return strcmp(unlocked_password, lt) != 0;
   }
 
   void send(std::ofstream& fifo)
