@@ -51,31 +51,63 @@ auto eq = "00";
 */
 struct gate
 {
-  char valid_inputs[6][SHA256_DIGEST_LENGTH]; 
+  char valid_inputs[6][SHA256_DIGEST_LENGTH+1]; 
   char output_passwords[6][PASS_SIZE/2];
 
-  //TODO: encryption and hashing
   char* evaluate(const char* pass)
   {
-    std::cout << "PASS: " << pass << "!" << std::endl;
-    int index = atoi(pass, 2);
-    //std::cout << "INDEX: " << index << std::endl;
-    return output_passwords[index];
+    for (int i = 0; i < 6; i++)
+      if (strcmp(valid_inputs[i], pass) == 0) 
+        return output_passwords[i];
+    assert(false && "No valid input!");
+    return nullptr;
   }
  
   gate() {}
  
-  gate(bool alice, bool last)
+  gate(bool alice, bool last, char bob_inps[2][PASS_SIZE/2], char in_pass[3][PASS_SIZE/2], char out_pass[3][PASS_SIZE/2])
   {
-    // TODO: higher order bits will be the carrythrough, since 11 can never occur.
+    // We need alice's bit for the logic
+    // Whether or not it's the last computation for the plaintext override
+    // Bob's possible passwords
+    // 3 input passwords
+    // 3 output passwords
+    
+    // higher order bits will be the carrythrough, since 11 can never occur.
     // the lower order bit will be alice
+    
+    // Gross, but fine    
+    strcpy(valid_inputs[0], CryptoService::hash(std::string(in_pass[0]) + std::string(bob_inps[0])).c_str());
+    strcpy(valid_inputs[1], CryptoService::hash(std::string(in_pass[0]) + std::string(bob_inps[1])).c_str());
+    strcpy(valid_inputs[2], CryptoService::hash(std::string(in_pass[1]) + std::string(bob_inps[0])).c_str());
+    strcpy(valid_inputs[3], CryptoService::hash(std::string(in_pass[1]) + std::string(bob_inps[1])).c_str());
+    strcpy(valid_inputs[4], CryptoService::hash(std::string(in_pass[2]) + std::string(bob_inps[0])).c_str());
+    strcpy(valid_inputs[5], CryptoService::hash(std::string(in_pass[2]) + std::string(bob_inps[1])).c_str());
+
+    /*
     strcpy(valid_inputs[0], "000");
     strcpy(valid_inputs[1], "001");
     strcpy(valid_inputs[2], "010");
     strcpy(valid_inputs[3], "011");
     strcpy(valid_inputs[4], "100");
     strcpy(valid_inputs[5], "101");
+    */
 
+    // Helped vars for equal, greater than, less than
+    char* peq = out_pass[0];  
+    char* pgt = out_pass[1];
+    char* plt = out_pass[2];
+    
+    // Checking against alice's bit
+    strcpy(output_passwords[0], alice? pgt : peq);
+    strcpy(output_passwords[1], alice? peq : plt);
+    // carry
+    strcpy(output_passwords[2], pgt);
+    strcpy(output_passwords[3], pgt);
+    strcpy(output_passwords[4], plt);
+    strcpy(output_passwords[5], plt);
+
+    /*
     // Checking against alice's bit
     strcpy(output_passwords[0], alice? gt : eq);
     strcpy(output_passwords[1], alice? eq : lt);
@@ -84,6 +116,7 @@ struct gate
     strcpy(output_passwords[3], gt);
     strcpy(output_passwords[4], lt);
     strcpy(output_passwords[5], lt);
+    */
   }
 };
 
@@ -103,28 +136,30 @@ class circuit
 public:
   circuit() {}
 
-  circuit(int alice) {
+  circuit(int alice, char msgs [n_bits][2][PASS_SIZE/2], char passes[n_bits][3][PASS_SIZE/2]) {
     for (int i = 0; i < n_bits; i++)
     {
       // gate 0 becomes highest order bit
       bool alice_bit = alice & (1 << (n_bits-1 -i));
-      gates[i] = gate(alice_bit, i == n_bits-1);
+      gates[i] = gate(alice_bit, i == n_bits-1, msgs[(n_bits-1 -i)], passes[i], passes[i+1]);
     }
   }
 
   // highest order bit is index 0
   bool evaluate(const char input[n_bits][PASS_SIZE]) {
-      char* unlocked_password = gates[0].evaluate(input[0]);
-      std::string str(unlocked_password);
+      // Evaluate with just the password
+      std::string str(input[0]);
+      char* unlocked_password = gates[0].evaluate(CryptoService::hash(str).c_str());
       //std::cout << "UNLOCKED: " << unlocked_password << std::endl;
   
+      // Evaluate with previous
       for (int i = 1; i < n_bits; i++)
       {
-          str = str + std::string(input[i]);
-          unlocked_password = gates[i].evaluate(str.c_str());
+          str = std::string(unlocked_password) + std::string(input[i]);
+          unlocked_password = gates[i].evaluate(CryptoService::hash(str).c_str());
           std::cout << "UNLOCKED: " << unlocked_password << "!" <<  std::endl;
-          str = std::string(unlocked_password);
       }
+      // Evaluate output
       return strcmp(unlocked_password, lt) != 0;
   }
 

@@ -6,7 +6,7 @@
 
 // Returns 2 encrypted messages, 1 of which is garbage
 // Given 2 public keys, 1 of which 1 garbage, and Alice's secret bit
-void alice_ot1(char msgs[2][MSG_SIZE], char keys[2][RSA_BUFF], char enc_msgs[2][MSG_SIZE])
+void alice_ot1(char msgs[2][PASS_SIZE/2], char keys[2][RSA_BUFF], char enc_msgs[2][MSG_SIZE])
 {
   assert(keys[0][magic_byte]+1 == keys[1][magic_byte] && "Alice received bad keys!");
 
@@ -36,9 +36,22 @@ void send_messages(char msgs[2][MSG_SIZE])
 }
 
 template <unsigned int n_bits>
-circuit<n_bits> garble(int num)
+circuit<n_bits> garble(int num, char msgs [n_bits][2][PASS_SIZE/2])
 {
-  return circuit<n_bits>(num);
+  char passes[n_bits][3][PASS_SIZE/2];
+  // Start at 1: There is no carry password there
+  for (int i = 1; i < n_bits; i++)
+  {
+    for (int j = 0; j < 3; j++)
+    {
+      // seems good enough as a password
+      auto pass = CryptoService::hash(std::to_string(i) + std::string("werhgiusedrgsgrsdrgeriugh") + std::to_string(j));
+      pass.copy(passes[i][j], PASS_SIZE/2);
+      passes[i][j][PASS_SIZE/2-1] = 0;
+    }
+  } 
+  
+  return circuit<n_bits>(num, msgs, passes);
 }
 
 template <unsigned int n_bits>
@@ -53,34 +66,37 @@ void send_circuit(circuit<n_bits> msg)
 // Handles all of Alice's actions given Alice's secret bits
 void alice(int num)
 {
+  // plaintext secrets
+  char msgs [n_bits][2][PASS_SIZE/2];
+  for (int i = 0; i < n_bits; i++)
+  {
+    //TODO: passwordify
+    std::string m0 = "0";
+    std::string m1 = "1";
+    m0.copy(msgs[i][0], PASS_SIZE/2);
+    m1.copy(msgs[i][1], PASS_SIZE/2);
+  }
+  
   // Alice garbles a circuit 
   // It contains her secret information
-  auto circuit = garble<n_bits>(num);
+  auto circuit = garble<n_bits>(num, msgs);
 
   // Write down the garbled circuit for Bob
   send_circuit<n_bits>(circuit);
 
   // Allocate space for the public keys
   char keys [2][RSA_BUFF];
-  // plaintext messages
-  char msgs [2][MSG_SIZE];
-  // encrypted messages
+  // encrypted secrets
   char enc_msgs [2][MSG_SIZE];
 
-  std::string m0 = "0"; 
-  std::string m1 = "1"; 
 
-  m0.copy(msgs[0], MSG_SIZE);
-  m1.copy(msgs[1], MSG_SIZE);
-
-  for (int i = 0; i < n_bits; i++)
+  for (int i = n_bits-1; i >=0; i--)
   {
     // Wait for Bob to send n public keys
     await_keys(keys[0], keys[1]);
 
     // Generate encrypted messages
-    // TODO: Send passwords instead of 0 and 1
-    alice_ot1(msgs, keys, enc_msgs);
+    alice_ot1(msgs[i], keys, enc_msgs);
 
     // Send them to bob
     send_messages(enc_msgs);
