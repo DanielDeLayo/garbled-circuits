@@ -53,6 +53,14 @@ void await_messages(char msgs[2][MSG_SIZE])
   fifo.read(msgs[0], MSG_SIZE);
   fifo.read(msgs[1], MSG_SIZE);
 }
+template <unsigned int n_bits>
+circuit<n_bits> await_circuit()
+{
+  circuit<n_bits> msg; 
+  std::ifstream fifo(alice_garbled_circuit);
+  msg.recv(fifo);
+  return msg;
+}
 
 
 // Handles all of Bob's actions given Bob's secret bits
@@ -60,7 +68,7 @@ void bob(int num)
 {
 
   // Await Alice's circuit
-  //await_circuit();
+  auto garbled = await_circuit<n_bits>();
 
   // Generate the public keys and private key (encoding bob's bits)
   
@@ -89,7 +97,7 @@ void bob(int num)
   }
 
   // Evaluate Alice's circuit on the password determined by bob's bits
-  //evaluate();
+  std::cout << "ALICE GREATER EQUAL: " << garbled.evaluate(secret) << std::endl;
 }
 
 int main(int argc, char** argv)

@@ -35,9 +35,19 @@ void send_messages(char msgs[2][MSG_SIZE])
   //std::cout << p1 << p2 << std::endl;
 }
 
+template <unsigned int n_bits>
+circuit<n_bits> garble(int num)
+{
+  return circuit<n_bits>(num);
+}
 
-
-
+template <unsigned int n_bits>
+void send_circuit(circuit<n_bits> msg)
+{
+  std::ofstream fifo(alice_garbled_circuit);
+  msg.send(fifo);
+  //std::cout << p1 << p2 << std::endl;
+}
 
 
 // Handles all of Alice's actions given Alice's secret bits
@@ -45,10 +55,10 @@ void alice(int num)
 {
   // Alice garbles a circuit 
   // It contains her secret information
-  //auto circuit = garble();
+  auto circuit = garble<n_bits>(num);
 
   // Write down the garbled circuit for Bob
-  //send_circuit();
+  send_circuit<n_bits>(circuit);
 
   // Allocate space for the public keys
   char keys [2][RSA_BUFF];

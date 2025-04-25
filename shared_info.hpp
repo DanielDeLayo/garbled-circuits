@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <fstream>
+#include <vector>
 
 #include "libcpp-crypto.hpp"
 using namespace lklibs;
@@ -33,6 +34,10 @@ constexpr int MSG_SIZE = 512;
 // AES message size
 constexpr int PASS_SIZE = 128;
 
+auto gt = "01";
+auto lt = "10";
+auto eq = "00";
+//00 encodes equality, 01 encodes alice greater than, and 10 encodes alice less than.
 
 /*
  * This gate is a simple comparison gate with carry-through.
@@ -40,7 +45,6 @@ constexpr int PASS_SIZE = 128;
  * 2 input wires are override wires, representing a higher comparison.
  * 1 input wire is Bob's bit, and the other is Alice's bit.
  * The 2 output wires are the override wires for the next circuit
- * 00 encodes equality, 01 encodes greater than, and 10 encodes less than.
  * 
  * This gate also, notably, already encodes Alice's informaton.
  * There are therefore 6 valid inputs and 6 possible outputs. That is, the three carrybit states x two bob states.
@@ -51,18 +55,33 @@ struct gate
   char output_passwords[6][PASS_SIZE/2];
 
   //TODO: encryption and hashing
-  char* evaluate(char* pass1, char* pass2)
+  char* evaluate(char* pass)
   {
-    int index = (atoi(pass1) << 2) + atoi(pass2);
-    std::cout << index << std::endl;
+    int index = atoi(pass);
     return output_passwords[index];
   }
-
-  gate(bool alice)
+ 
+  gate() {}
+ 
+  gate(bool alice, bool last)
   {
     // TODO: higher order bits will be the carrythrough, since 11 can never occur.
     // the lower order bit will be alice
-    
+    strcpy(valid_inputs[0], "000");
+    strcpy(valid_inputs[1], "001");
+    strcpy(valid_inputs[2], "010");
+    strcpy(valid_inputs[3], "011");
+    strcpy(valid_inputs[4], "100");
+    strcpy(valid_inputs[5], "101");
+
+    // Checking against alice's bit
+    strcpy(output_passwords[0], alice? gt : eq);
+    strcpy(output_passwords[1], alice? eq : lt);
+    // carry
+    strcpy(output_passwords[2], gt);
+    strcpy(output_passwords[3], gt);
+    strcpy(output_passwords[4], lt);
+    strcpy(output_passwords[5], lt);
   }
 };
 
@@ -77,7 +96,52 @@ struct gate
 template <unsigned int n_bits>
 class circuit
 {
-  
-};
+  gate gates[n_bits];
 
+public:
+  circuit() {}
+
+  circuit(int alice) {
+    for (int i = 0; i < n_bits; i++)
+    {
+      // gate 0 becomes highest order bit
+      bool alice_bit = alice & (1 << (n_bits-1 -i));
+      gates[i] = gate(alice_bit, i == n_bits-1);
+    }
+  }
+
+  // highest order bit is index 0
+  bool evaluate(char input[n_bits][PASS_SIZE]) {
+      char* unlocked_password = gates[0].evaluate(input[0]);
+      for (int i = 1; i < n_bits; i++)
+      {
+          unlocked_password = gates[i].evaluate(unlocked_password);
+      }
+      return unlocked_password == eq || unlocked_password == gt;
+  }
+
+  void send(std::ofstream& fifo)
+  {
+    for (int i = 0; i < n_bits; i++)
+    {
+      for (int j = 0; j < 6; j++)
+      {
+        fifo.write(gates[i].valid_inputs[j], SHA256_DIGEST_LENGTH);
+        fifo.write(gates[i].output_passwords[j], PASS_SIZE/2);
+      }
+    }
+  }
+
+  void recv(std::ifstream& fifo)
+  {
+    for (int i = 0; i < n_bits; i++)
+    {
+      for (int j = 0; j < 6; j++)
+      {
+        fifo.read(gates[i].valid_inputs[j], SHA256_DIGEST_LENGTH);
+        fifo.read(gates[i].output_passwords[j], PASS_SIZE/2);
+      }
+    }
+  }
+};
 
